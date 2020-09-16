@@ -7,11 +7,6 @@ import 'package:testMessanger/blocks/messageGroup.dart';
 import 'package:testMessanger/style/palette.dart';
 import 'package:web_socket_channel/io.dart';
 
-//TODO
-//After tern off the LTE -> terning in on
-//the reconnection does not go
-//handler for losting the connection process
-
 class ChatScreen extends StatefulWidget {
   final String username;
   ChatScreen({Key key, @required this.username}) : super(key: key);
@@ -28,9 +23,7 @@ class _ChatScreenState extends State<ChatScreen> {
   //list of messages
   List<OneMessage> allMessages;
   List<OneMessage> sendingMessages;
-  bool isConnected = false;
-
-  int counter = 0;
+  bool isFirstConnected = false;
 
   @override
   void initState() {
@@ -53,7 +46,14 @@ class _ChatScreenState extends State<ChatScreen> {
           },
         ),
         middle: GestureDetector(
-          child: Text("Reconnect"),
+          child: Text(
+            "...${"Reconnect".toUpperCase()}...",
+            style: TextStyle(
+                color: defaultBackgrounColor,
+                backgroundColor: myMessagesColor,
+                fontFamily: "RedRose",
+                fontWeight: FontWeight.bold),
+          ),
           onTap: () {
             reconnectWithDuration(100);
           },
@@ -87,7 +87,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   messageGroupBuilder(snapshot) {
     setState(() {
-      isConnected = true;
+      isFirstConnected = true;
     });
     final parsedJson = json.decode(snapshot.data);
     if (parsedJson["name"] == null) {
@@ -185,25 +185,7 @@ class _ChatScreenState extends State<ChatScreen> {
       channel.sink.add(message);
       _messageInputController.text = "";
     }
-    if (!isConnected) {
-      // if (_messageInputController.text.isNotEmpty) {
-      //   setState(() {
-      //     sendingMessages = [
-      //       ...sendingMessages,
-      //       OneMessage(
-      //           _messageInputController.text, widget.username, true, false)
-      //     ];
-      //     _scrollController.animateTo(
-      //         _scrollController.position.maxScrollExtent + 100,
-      //         curve: Curves.easeInCirc,
-      //         duration: Duration(milliseconds: 400));
-      //   });
-      //   String message = json.encode({
-      //     'text': _messageInputController.text,
-      //   });
-      //   channel.sink.add(message);
-      //   _messageInputController.text = "";
-      // }
+    if (!isFirstConnected) {
       reconnectWithDuration(500);
     }
   }

@@ -23,7 +23,6 @@ class _ChatScreenState extends State<ChatScreen> {
   //list of messages
   List<OneMessage> allMessages;
   List<OneMessage> sendingMessages;
-  bool isFirstConnected = false;
 
   @override
   void initState() {
@@ -86,9 +85,6 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   messageGroupBuilder(snapshot) {
-    setState(() {
-      isFirstConnected = true;
-    });
     final parsedJson = json.decode(snapshot.data);
     if (parsedJson["name"] == null) {
       parsedJson["name"] = "";
@@ -97,10 +93,12 @@ class _ChatScreenState extends State<ChatScreen> {
         parsedJson["text"],
         parsedJson["name"],
         (parsedJson["name"] == widget.username) ? (true) : (false),
-        true);
+        true,
+        parsedJson["created"]);
     if (allMessages.isNotEmpty) {
-      if (allMessages.last.name != simpleMessage.name &&
-          allMessages.last.text != simpleMessage.text) {
+      if ((allMessages.last.name != simpleMessage.name) |
+          (allMessages.last.text != simpleMessage.text) |
+          (allMessages.last.created != simpleMessage.created)) {
         if (simpleMessage.isMyMessage) {
           sendingMessages
               .removeWhere((element) => element.text == simpleMessage.text);
@@ -176,7 +174,8 @@ class _ChatScreenState extends State<ChatScreen> {
         }
         sendingMessages = [
           ...sendingMessages,
-          OneMessage(_messageInputController.text, widget.username, true, false)
+          OneMessage(_messageInputController.text, widget.username, true, false,
+              DateTime.now().toString())
         ];
       });
       String message = json.encode({
@@ -184,9 +183,6 @@ class _ChatScreenState extends State<ChatScreen> {
       });
       channel.sink.add(message);
       _messageInputController.text = "";
-    }
-    if (!isFirstConnected) {
-      reconnectWithDuration(500);
     }
   }
 
@@ -203,7 +199,6 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   reconnectWithDuration(int duration) {
-    print("reconnect");
     Future.delayed(Duration(microseconds: duration), () {
       setState(() {
         channel = IOWebSocketChannel.connect(
@@ -215,8 +210,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
 class OneMessage {
   bool isMyMessage;
+  String created;
   bool isSended;
   String text;
   String name;
-  OneMessage(this.text, this.name, this.isMyMessage, this.isSended);
+  OneMessage(
+      this.text, this.name, this.isMyMessage, this.isSended, this.created);
 }

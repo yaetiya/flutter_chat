@@ -6,6 +6,11 @@ import 'package:testMessanger/blocks/messageGroup.dart';
 import 'package:testMessanger/style/palette.dart';
 import 'package:web_socket_channel/io.dart';
 
+//TODO
+//After tern off the LTE -> terning in on
+//the reconnection does not go
+//handler for losting the connection process
+
 class ChatScreen extends StatefulWidget {
   final String username;
   ChatScreen({Key key, @required this.username}) : super(key: key);
@@ -21,6 +26,9 @@ class _ChatScreenState extends State<ChatScreen> {
   IOWebSocketChannel channel;
   //list of messages
   List<OneMessage> allMessages;
+  bool isConnected = false;
+
+  int counter = 0;
 
   @override
   void initState() {
@@ -28,6 +36,7 @@ class _ChatScreenState extends State<ChatScreen> {
     channel = IOWebSocketChannel.connect(
         "ws://pm.tada.team/ws?name=${widget.username}");
     allMessages = [];
+    reconnectCycle();
   }
 
   @override
@@ -35,7 +44,7 @@ class _ChatScreenState extends State<ChatScreen> {
     Size size = MediaQuery.of(context).size;
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
-        middle: Text("Chat"),
+        middle: isConnected ? (Text("Connected")) : Text("Reconecting"),
       ),
       child: Padding(
         padding: const EdgeInsets.all(0.0),
@@ -44,6 +53,7 @@ class _ChatScreenState extends State<ChatScreen> {
             StreamBuilder(
               stream: channel.stream,
               builder: (context, snapshot) {
+                print(counter++);
                 if (snapshot.hasError) {
                   return Center(
                     child: Text("No internet connection"),
@@ -68,6 +78,9 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   messageGroupBuilder(snapshot) {
+    setState(() {
+      isConnected = true;
+    });
     final parsedJson = json.decode(snapshot.data);
     if (parsedJson["name"] == null) {
       parsedJson["name"] = "";
@@ -92,7 +105,6 @@ class _ChatScreenState extends State<ChatScreen> {
         allMessages = [simpleMessage];
       });
     }
-    ;
   }
 
   Widget sendingGroupBuilder(Size size) {
@@ -141,12 +153,16 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void sendMessage() {
-    if (_messageInputController.text.isNotEmpty) {
-      String message = json.encode({
-        'text': _messageInputController.text,
-      });
-      channel.sink.add(message);
-      _messageInputController.text = "";
+    if (isConnected) {
+      if (_messageInputController.text.isNotEmpty) {
+        String message = json.encode({
+          'text': _messageInputController.text,
+        });
+        channel.sink.add(message);
+        _messageInputController.text = "";
+      }
+    } else {
+      reconnect();
     }
   }
 
@@ -154,6 +170,22 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     channel.sink.close();
     super.dispose();
+  }
+
+  void reconnect() {
+    Future.delayed(Duration(microseconds: 800), () {
+      setState(() {
+        channel = IOWebSocketChannel.connect(
+            "ws://pm.tada.team/ws?name=${widget.username}");
+      });
+    });
+  }
+
+  void reconnectCycle() {
+    Future.delayed(Duration(microseconds: 2000), () {
+      reconnect();
+      reconnectCycle();
+    });
   }
 }
 

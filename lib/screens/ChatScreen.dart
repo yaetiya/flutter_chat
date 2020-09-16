@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +27,7 @@ class _ChatScreenState extends State<ChatScreen> {
   IOWebSocketChannel channel;
   //list of messages
   List<OneMessage> allMessages;
+  List<OneMessage> sendingMessages;
   bool isConnected = false;
 
   int counter = 0;
@@ -36,7 +38,7 @@ class _ChatScreenState extends State<ChatScreen> {
     channel = IOWebSocketChannel.connect(
         "ws://pm.tada.team/ws?name=${widget.username}");
     allMessages = [];
-    reconnectCycle();
+    sendingMessages = [];
   }
 
   @override
@@ -44,7 +46,18 @@ class _ChatScreenState extends State<ChatScreen> {
     Size size = MediaQuery.of(context).size;
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
-        middle: isConnected ? (Text("Connected")) : Text("Reconecting"),
+        trailing: GestureDetector(
+          child: Icon(CupertinoIcons.delete_simple),
+          onTap: () {
+            deleteUnsentMessages();
+          },
+        ),
+        middle: GestureDetector(
+          child: Text("Reconnect"),
+          onTap: () {
+            reconnectWithDuration(100);
+          },
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(0.0),
@@ -53,20 +66,15 @@ class _ChatScreenState extends State<ChatScreen> {
             StreamBuilder(
               stream: channel.stream,
               builder: (context, snapshot) {
-                print(counter++);
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text("No internet connection"),
-                  );
+                if (snapshot.hasData) {
+                  SchedulerBinding.instance.addPostFrameCallback((_) {
+                    messageGroupBuilder(snapshot);
+                  });
+                  return messageGroup(
+                      size, allMessages, _scrollController, sendingMessages);
                 } else {
-                  if (snapshot.hasData) {
-                    SchedulerBinding.instance.addPostFrameCallback((_) {
-                      messageGroupBuilder(snapshot);
-                    });
-                    return messageGroup(size, allMessages, _scrollController);
-                  } else {
-                    return Center(child: CupertinoActivityIndicator());
-                  }
+                  return messageGroup(
+                      size, allMessages, _scrollController, sendingMessages);
                 }
               },
             ),
@@ -88,10 +96,15 @@ class _ChatScreenState extends State<ChatScreen> {
     OneMessage simpleMessage = OneMessage(
         parsedJson["text"],
         parsedJson["name"],
-        (parsedJson["name"] == widget.username) ? (true) : (false));
+        (parsedJson["name"] == widget.username) ? (true) : (false),
+        true);
     if (allMessages.isNotEmpty) {
       if (allMessages.last.name != simpleMessage.name &&
           allMessages.last.text != simpleMessage.text) {
+        if (simpleMessage.isMyMessage) {
+          sendingMessages
+              .removeWhere((element) => element.text == simpleMessage.text);
+        }
         setState(() {
           allMessages = [...allMessages, simpleMessage];
           _scrollController.animateTo(
@@ -153,16 +166,45 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void sendMessage() {
-    if (isConnected) {
-      if (_messageInputController.text.isNotEmpty) {
-        String message = json.encode({
-          'text': _messageInputController.text,
-        });
-        channel.sink.add(message);
-        _messageInputController.text = "";
-      }
-    } else {
-      reconnect();
+    if (_messageInputController.text.isNotEmpty) {
+      setState(() {
+        if (!(sendingMessages.isEmpty && allMessages.isEmpty)) {
+          _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent + 100,
+              curve: Curves.easeInCirc,
+              duration: Duration(milliseconds: 400));
+        }
+        sendingMessages = [
+          ...sendingMessages,
+          OneMessage(_messageInputController.text, widget.username, true, false)
+        ];
+      });
+      String message = json.encode({
+        'text': _messageInputController.text,
+      });
+      channel.sink.add(message);
+      _messageInputController.text = "";
+    }
+    if (!isConnected) {
+      // if (_messageInputController.text.isNotEmpty) {
+      //   setState(() {
+      //     sendingMessages = [
+      //       ...sendingMessages,
+      //       OneMessage(
+      //           _messageInputController.text, widget.username, true, false)
+      //     ];
+      //     _scrollController.animateTo(
+      //         _scrollController.position.maxScrollExtent + 100,
+      //         curve: Curves.easeInCirc,
+      //         duration: Duration(milliseconds: 400));
+      //   });
+      //   String message = json.encode({
+      //     'text': _messageInputController.text,
+      //   });
+      //   channel.sink.add(message);
+      //   _messageInputController.text = "";
+      // }
+      reconnectWithDuration(500);
     }
   }
 
@@ -172,26 +214,27 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  void reconnect() {
-    Future.delayed(Duration(microseconds: 800), () {
+  deleteUnsentMessages() {
+    setState(() {
+      sendingMessages = [];
+    });
+  }
+
+  reconnectWithDuration(int duration) {
+    print("reconnect");
+    Future.delayed(Duration(microseconds: duration), () {
       setState(() {
         channel = IOWebSocketChannel.connect(
             "ws://pm.tada.team/ws?name=${widget.username}");
       });
     });
   }
-
-  void reconnectCycle() {
-    Future.delayed(Duration(microseconds: 2000), () {
-      reconnect();
-      reconnectCycle();
-    });
-  }
 }
 
 class OneMessage {
   bool isMyMessage;
+  bool isSended;
   String text;
   String name;
-  OneMessage(this.text, this.name, this.isMyMessage);
+  OneMessage(this.text, this.name, this.isMyMessage, this.isSended);
 }

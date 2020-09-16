@@ -2,8 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:testMessanger/style/palette.dart';
 
 //Можно было сделать отдельный отрисовщик для присоединения к диалогу...
-Widget message(
-    Size size, bool isMyMessage, String messageText, String messageSender) {
+Widget message(Size size, bool isMyMessage, String messageText,
+    String messageSender, bool isSended) {
   return Container(
     width: size.width,
     child: Column(
@@ -21,7 +21,9 @@ Widget message(
             margin: EdgeInsets.only(bottom: 14),
             constraints: BoxConstraints(maxWidth: size.width * 0.8),
             decoration: BoxDecoration(
-              color: (isMyMessage) ? myMessagesColor : otherMesssagesColor,
+              color: (isMyMessage)
+                  ? ((isSended) ? myMessagesColor : otherMesssagesColor)
+                  : otherMesssagesColor,
               borderRadius: BorderRadius.all(Radius.circular(13)),
             ),
             child: Padding(
@@ -29,7 +31,9 @@ Widget message(
               child: Text(
                 messageText,
                 style: TextStyle(
-                  color: (isMyMessage) ? defaultBackgrounColor : textColor,
+                  color: (isMyMessage)
+                      ? ((isSended) ? defaultBackgrounColor : lightColor)
+                      : textColor,
                 ),
               ),
             ))

@@ -5,8 +5,8 @@ import 'package:testMessanger/style/palette.dart';
 import '../compoents/message.dart';
 
 Widget messageGroup(Size size, List<OneMessage> allMessages,
-    ScrollController _scrollController) {
-  return (allMessages.isNotEmpty)
+    ScrollController _scrollController, List<OneMessage> sendingMessages) {
+  return (!(allMessages.isEmpty && sendingMessages.isEmpty))
       ? (Positioned(
           left: 0,
           bottom: 58,
@@ -19,10 +19,12 @@ Widget messageGroup(Size size, List<OneMessage> allMessages,
                 child: SingleChildScrollView(
                   controller: _scrollController,
                   child: Column(
-                    children: allMessages
-                        .map(
-                            (e) => message(size, e.isMyMessage, e.text, e.name))
-                        .toList(),
+                    children: [
+                      ...allMessages.map((e) => message(
+                          size, e.isMyMessage, e.text, e.name, e.isSended)),
+                      ...sendingMessages.map((e) => message(
+                          size, e.isMyMessage, e.text, e.name, e.isSended))
+                    ],
                   ),
                 )),
           ),

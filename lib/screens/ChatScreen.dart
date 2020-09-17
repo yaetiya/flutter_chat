@@ -46,7 +46,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         middle: GestureDetector(
           child: Text(
-            "...${"Reconnect".toUpperCase()}...",
+            "...${"tap to reconnect".toUpperCase()}...",
             style: TextStyle(
                 color: defaultBackgrounColor,
                 backgroundColor: myMessagesColor,
@@ -67,7 +67,24 @@ class _ChatScreenState extends State<ChatScreen> {
               builder: (context, snapshot) {
                 if (snapshot.hasData) {
                   SchedulerBinding.instance.addPostFrameCallback((_) {
-                    messageGroupBuilder(snapshot);
+                    final parsedJson = json.decode(snapshot.data);
+                    if (parsedJson["name"] == null) {
+                      parsedJson["name"] = "";
+                    }
+
+                    OneMessage simpleMessage = OneMessage(
+                        parsedJson["text"],
+                        parsedJson["name"],
+                        (parsedJson["name"] == widget.username)
+                            ? (true)
+                            : (false),
+                        true,
+                        parsedJson["created"]);
+                    bool newMessageStatus =
+                        messageGroupBuilder(snapshot, simpleMessage);
+                    if (newMessageStatus) {
+                      scrollWithDuration();
+                    }
                   });
                   return messageGroup(
                       size, allMessages, _scrollController, sendingMessages);
@@ -84,38 +101,28 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  messageGroupBuilder(snapshot) {
-    final parsedJson = json.decode(snapshot.data);
-    if (parsedJson["name"] == null) {
-      parsedJson["name"] = "";
-    }
-    OneMessage simpleMessage = OneMessage(
-        parsedJson["text"],
-        parsedJson["name"],
-        (parsedJson["name"] == widget.username) ? (true) : (false),
-        true,
-        parsedJson["created"]);
+  bool messageGroupBuilder(snapshot, simpleMessage) {
     if (allMessages.isNotEmpty) {
-      if ((allMessages.last.name != simpleMessage.name) |
-          (allMessages.last.text != simpleMessage.text) |
-          (allMessages.last.created != simpleMessage.created)) {
+      if (isNewMessage(allMessages.last, simpleMessage)) {
         if (simpleMessage.isMyMessage) {
           sendingMessages
               .removeWhere((element) => element.text == simpleMessage.text);
         }
         setState(() {
           allMessages = [...allMessages, simpleMessage];
-          _scrollController.animateTo(
-              _scrollController.position.maxScrollExtent + 100,
-              curve: Curves.easeInCirc,
-              duration: Duration(milliseconds: 400));
         });
+        return true;
+        // if (simpleMessage.isMyMessage) {
+        //   scrollWithDuration();
+        // }
       }
     } else {
       setState(() {
         allMessages = [simpleMessage];
       });
+      return true;
     }
+    return false;
   }
 
   Widget sendingGroupBuilder(Size size) {
@@ -165,13 +172,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void sendMessage() {
     if (_messageInputController.text.isNotEmpty) {
+      if (!(sendingMessages.isEmpty && allMessages.isEmpty)) {
+        scrollWithDuration();
+      }
       setState(() {
-        if (!(sendingMessages.isEmpty && allMessages.isEmpty)) {
-          _scrollController.animateTo(
-              _scrollController.position.maxScrollExtent + 100,
-              curve: Curves.easeInCirc,
-              duration: Duration(milliseconds: 400));
-        }
         sendingMessages = [
           ...sendingMessages,
           OneMessage(_messageInputController.text, widget.username, true, false,
@@ -198,6 +202,16 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  scrollWithDuration() {
+    print('object');
+    Future.delayed(Duration(microseconds: 100), () {
+      setState(() {
+        _scrollController.animateTo(_scrollController.position.maxScrollExtent,
+            curve: Curves.easeInCirc, duration: Duration(milliseconds: 100));
+      });
+    });
+  }
+
   reconnectWithDuration(int duration) {
     Future.delayed(Duration(microseconds: duration), () {
       setState(() {
@@ -216,4 +230,10 @@ class OneMessage {
   String name;
   OneMessage(
       this.text, this.name, this.isMyMessage, this.isSended, this.created);
+}
+
+bool isNewMessage(OneMessage message1, OneMessage message2) {
+  return ((message1.name != message2.name) |
+      (message1.text != message2.text) |
+      (message1.created != message2.created));
 }

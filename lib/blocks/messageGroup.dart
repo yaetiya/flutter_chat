@@ -20,6 +20,9 @@ Widget messageGroup(Size size, List<OneMessage> allMessages,
                   controller: _scrollController,
                   child: Column(
                     children: [
+                      SizedBox(
+                        height: 100,
+                      ),
                       ...allMessages.map((e) => message(
                           size, e.isMyMessage, e.text, e.name, e.isSended)),
                       ...sendingMessages.map((e) => message(

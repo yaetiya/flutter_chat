@@ -27,8 +27,9 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    print(Uri.encodeComponent(widget.username));
     channel = IOWebSocketChannel.connect(
-        "ws://pm.tada.team/ws?name=${widget.username}");
+        "ws://pm.tada.team/ws?name=${Uri.encodeComponent(widget.username)}");
     allMessages = [];
     sendingMessages = [];
   }
@@ -216,7 +217,7 @@ class _ChatScreenState extends State<ChatScreen> {
     Future.delayed(Duration(microseconds: duration), () {
       setState(() {
         channel = IOWebSocketChannel.connect(
-            "ws://pm.tada.team/ws?name=${widget.username}");
+            "ws://pm.tada.team/ws?name=${Uri.encodeComponent(widget.username)}");
       });
     });
   }

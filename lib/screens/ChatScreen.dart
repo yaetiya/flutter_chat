@@ -84,15 +84,14 @@ class _ChatScreenState extends State<ChatScreen> {
                     bool newMessageStatus =
                         messageGroupBuilder(snapshot, simpleMessage);
                     if (newMessageStatus) {
-                      scrollWithDuration();
+                      SchedulerBinding.instance.addPostFrameCallback((_) {
+                        scrollWithDuration();
+                      });
                     }
                   });
-                  return messageGroup(
-                      size, allMessages, _scrollController, sendingMessages);
-                } else {
-                  return messageGroup(
-                      size, allMessages, _scrollController, sendingMessages);
                 }
+                return messageGroup(
+                    size, allMessages, _scrollController, sendingMessages);
               },
             ),
             sendingGroupBuilder(size),
